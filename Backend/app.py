@@ -1,37 +1,25 @@
-from flask import Flask, request, jsonify
-import os
+from flask import Flask
+from flask_cors import CORS
+
+try:
+    from .routes.review import review_bp
+except ImportError:
+    from routes.review import review_bp
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
+CORS(app)
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
+app.register_blueprint(review_bp)
 
 @app.route("/")
 def home():
-    return "AI Code Review Assistant Backend Running!"
+    return "AI Code Review Assistant Running"
 
 
-@app.route("/upload", methods=["POST"])
-def upload_file():
-
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files["file"]
-
-    if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
-
-    file.save(os.path.join(UPLOAD_FOLDER, file.filename))
-
-    return jsonify({
-        "message": "File uploaded successfully",
-        "filename": file.filename
-    })
+def main():
+    app.run(debug=True, use_reloader=False)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    main()

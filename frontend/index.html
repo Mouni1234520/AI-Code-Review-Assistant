@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Code Review Assistant</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      border: 2px dashed #667eea;
+      border-radius: 8px;
+      background: #f8f9ff;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      color: #667eea;
+      font-weight: 500;
+    }
+
+    .file-input-wrapper:hover .file-input-label {
+      background: #f0f2ff;
+      border-color: #764ba2;
+      color: #764ba2;
+    }
+
+    .file-name {
+      display: block;
+      color: #333;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .response-section {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid #eee;
+    }
+
+    .response-header {
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .response-box {
+      background: #f8f9ff;
+      border: 1px solid #e0e0ff;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: "Monaco", "Courier New", monospace;
+      font-size: 12px;
+      color: #333;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    .response-box.error {
+      background: #fff5f5;
+      border-color: #ffcccc;
+      color: #c00;
+    }
+
+    .response-box.success {
+      background: #f5fff5;
+      border-color: #ccffcc;
+      color: #060;
+    }
+
+    .loading {
+      color: #667eea;
+      font-style: italic;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .status-badge.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status-badge.loading {
+      background: #e2e3e5;
+      color: #383d41;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 AI Code Review Assistant</h1>
+    <p class="subtitle">Upload your Python file for automatic code analysis</p>
+
+    <form id="uploadForm">
+      <div class="form-group">
+        <label for="fileInput">Select Python File</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="fileInput" name="file" accept=".py" required />
+          <div class="file-input-label">
+            📁 Click to browse or drag and drop
+          </div>
+          <span class="file-name" id="fileName"></span>
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn">Analyze Code</button>
+    </form>
+
+    <div class="response-section" id="responseSection" style="display: none;">
+      <div class="response-header">Analysis Results</div>
+      <div class="status-badge" id="statusBadge"></div>
+      <div class="response-box" id="responseBox"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("fileInput");
+    const fileNameSpan = document.getElementById("fileName");
+    const responseSection = document.getElementById("responseSection");
+    const responseBox = document.getElementById("responseBox");
+    const statusBadge = document.getElementById("statusBadge");
+    const submitBtn = document.getElementById("submitBtn");
+    const backendUrls = [
+      "http://127.0.0.1:5000/upload",
+      "http://localhost:5000/upload"
+    ];
+
+    async function tryUpload(formData) {
+      let lastError = null;
+
+      for (const url of backendUrls) {
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+          return { response, data };
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      throw lastError;
+    }
+
+    // Update file name display
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        fileNameSpan.textContent = `Selected: ${fileInput.files[0].name}`;
+      } else {
+        fileNameSpan.textContent = "";
+      }
+    });
+
+    // Handle form submission
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!fileInput.files.length) {
+        responseBox.textContent = "Please choose a Python file first.";
+        responseBox.classList.add("error");
+        statusBadge.textContent = "Error";
+        statusBadge.classList = "status-badge error";
+        responseSection.style.display = "block";
+        return;
+      }
+
+      const fileName = fileInput.files[0].name;
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      submitBtn.disabled = true;
+      responseBox.textContent = "Analyzing...";
+      responseBox.classList = "response-box";
+      statusBadge.textContent = "Uploading";
+      statusBadge.classList = "status-badge loading";
+      responseSection.style.display = "block";
+
+      try {
+        const { response, data } = await tryUpload(formData);
+
+        if (response.ok) {
+          responseBox.textContent = JSON.stringify(data, null, 2);
+          responseBox.classList = "response-box success";
+          statusBadge.textContent = "✓ Success";
+          statusBadge.classList = "status-badge success";
+        } else {
+          responseBox.textContent =
+            data.message || "Upload failed. Please try again.";
+          responseBox.classList = "response-box error";
+          statusBadge.textContent = "✗ Failed";
+          statusBadge.classList = "status-badge error";
+        }
+      } catch (error) {
+        responseBox.textContent = `Request failed: ${error.message}\n\nMake sure the backend is running on http://127.0.0.1:5000 or http://localhost:5000`;
+        responseBox.classList = "response-box error";
+        statusBadge.textContent = "✗ Error";
+        statusBadge.classList = "status-badge error";
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Drag and drop support
+    const fileInputLabel = document.querySelector(".file-input-label");
+    const dragZone = document.querySelector(".file-input-wrapper");
+
+    dragZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      fileInputLabel.style.background = "#f0f2ff";
+      fileInputLabel.style.borderColor = "#764ba2";
+    });
+
+    dragZone.addEventListener("dragleave", () => {
+      fileInputLabel.style.background = "#f8f9ff";
+      fileInputLabel.style.borderColor = "#667eea";
+    });
+
+    dragZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      fileInputLabel.style.background = "#f8f9ff";
+      fileInputLabel.style.borderColor = "#667eea";
+
+      if (e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        if (file.name.endsWith(".py")) {
+          fileInput.files = e.dataTransfer.files;
+          fileNameSpan.textContent = `Selected: ${file.name}`;
+        } else {
+          alert("Please drop a Python file (.py)");
+        }
+      }
+    });
+  </script>
+</body>
+</html>
