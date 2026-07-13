@@ -21,7 +21,7 @@ function ReviewTable({ result, security, complexity }) {
     return pylintFindings.map((item) => {
       const msgType = (item.type || "warning").toLowerCase();
       let sev = "low";
-      if (msgType in ("error", "fatal")) sev = "high";
+      if (["error", "fatal"].includes(msgType)) sev = "high";
       else if (msgType === "warning") sev = "medium";
       else if (msgType === "refactor" || msgType === "convention") sev = "low";
       
