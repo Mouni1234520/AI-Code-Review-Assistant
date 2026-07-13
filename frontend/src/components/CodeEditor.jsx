@@ -25,7 +25,7 @@ print(calculate_factorial(5))
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!code.strip()) {
+    if (!code.trim()) {
       alert("Please paste some code to review.");
       return;
     }
