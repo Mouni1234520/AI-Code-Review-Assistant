@@ -5,3 +5,5 @@ bandit==1.7.5
 radon==6.0.1
 flask-jwt-extended
 werkzeug
+flask-sqlalchemy
+sqlalchemy
