@@ -8,7 +8,7 @@ from models.project import Project
 from models.review import Review, ReviewFinding
 from services.pylint_service import analyze_pylint
 from services.security_service import run_bandit
-from services.complexity_service import analyze_complexity
+from services.complexity_service import analyze_complexity, get_mi_rank
 from services.ai_service import run_ai_review
 
 review_bp = Blueprint("review", __name__)
@@ -26,60 +26,74 @@ def allowed_file(filename):
 @jwt_required()
 def upload_or_submit():
     user_id = get_jwt_identity()
-    filepath = None
-    filename = None
+    api_key_header = request.headers.get("X-Gemini-API-Key")
+
+    # Check if multiple files were uploaded under the "file" key
+    uploaded_files = request.files.getlist("file") if "file" in request.files else []
+    # Filter out blank entries
+    uploaded_files = [f for f in uploaded_files if f.filename != ""]
+
     upload_type = "file"
-    code_content = ""
+    project_name = ""
+    code_content_combined = ""
+    file_records = []
 
-    # Check if this is a file upload or code snippet submission
-    if "file" in request.files:
-        file = request.files["file"]
-        if file.filename == "":
-            return jsonify({"error": "No file selected"}), 400
-        
-        if not allowed_file(file.filename):
-            return jsonify({"error": "Only .py and .js files are allowed"}), 400
-
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(filepath)
+    if uploaded_files:
         upload_type = "file"
+        project_name = ", ".join([f.filename for f in uploaded_files])
 
-        # Read content for AI service
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                code_content = f.read()
-        except Exception:
-            pass
+        # Save and prepare all uploaded files
+        for file in uploaded_files:
+            if not allowed_file(file.filename):
+                return jsonify({"error": f"File '{file.filename}' type not allowed. Only .py and .js files are supported."}), 400
+
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
+
+            # Read code content
+            content = ""
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                code_content_combined += f"\n\n# ==========================================\n# FILE: {filename}\n# ==========================================\n{content}\n"
+            except Exception:
+                pass
+
+            file_records.append({
+                "filepath": filepath,
+                "filename": filename,
+                "content": content
+            })
     else:
-        # Paste snippet payload
+        # Code snippet submission
         data = request.get_json()
         if not data or "code" not in data:
             return jsonify({"error": "No file uploaded or code snippet received"}), 400
-        
+
         code_content = data.get("code", "")
         lang = data.get("language", "python")
         ext = "js" if lang.lower() in ("js", "javascript") else "py"
         filename = data.get("filename", f"snippet.{ext}")
-        
+
         filename = secure_filename(filename)
         if not filename.endswith(f".{ext}"):
             filename = f"{filename}.{ext}"
 
         filepath = os.path.join(UPLOAD_FOLDER, filename)
-        
-        # Save code to file to run static analyzers
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(code_content)
+
         upload_type = "snippet"
+        project_name = filename
+        code_content_combined = code_content
+        file_records.append({
+            "filepath": filepath,
+            "filename": filename,
+            "content": code_content
+        })
 
-    # Read config keys
-    api_key_header = request.headers.get("X-Gemini-API-Key")
-
-    # Determine language
-    is_python = filename.endswith(".py")
-
-    # Stage 2: Static Code Analysis (Only for Python files)
+    # Combined results schemas
     pylint_res = {"findings": [], "score": 100.0}
     bandit_res = {"results": []}
     complexity_res = {
@@ -89,34 +103,92 @@ def upload_or_submit():
         "stats": {"classes_count": 0, "functions_count": 0, "avg_complexity": 0, "avg_func_length": 0}
     }
 
-    if is_python:
-        pylint_res = analyze_pylint(filepath)
-        bandit_res = run_bandit(filepath)
-        complexity_res = analyze_complexity(filepath)
+    pylint_scores = []
+    mi_scores = []
+    num_python = 0
+
+    # Analyze each file
+    for rec in file_records:
+        fname = rec["filename"]
+        fpath = rec["filepath"]
+        is_python = fname.endswith(".py")
+
+        if is_python:
+            num_python += 1
+            # 1. Pylint
+            p_res = analyze_pylint(fpath)
+            for f in p_res.get("findings", []):
+                f["file_name"] = fname
+            pylint_res["findings"].extend(p_res.get("findings", []))
+            pylint_scores.append(p_res.get("score", 100.0))
+
+            # 2. Bandit
+            b_res = run_bandit(fpath)
+            for f in b_res.get("results", []):
+                f["file_name"] = fname
+            bandit_res["results"].extend(b_res.get("results", []))
+
+            # 3. Radon
+            c_res = analyze_complexity(fpath)
+            for block in c_res.get("complexity", []):
+                block["file_name"] = fname
+            complexity_res["complexity"].extend(c_res.get("complexity", []))
+
+            # Accumulate raw metrics
+            complexity_res["raw"]["loc"] += c_res.get("raw", {}).get("loc", 0)
+            complexity_res["raw"]["lloc"] += c_res.get("raw", {}).get("lloc", 0)
+            complexity_res["raw"]["sloc"] += c_res.get("raw", {}).get("sloc", 0)
+            complexity_res["raw"]["comments"] += c_res.get("raw", {}).get("comments", 0)
+            complexity_res["raw"]["multi"] += c_res.get("raw", {}).get("multi", 0)
+            complexity_res["raw"]["blank"] += c_res.get("raw", {}).get("blank", 0)
+
+            # Accumulate stats counts
+            complexity_res["stats"]["classes_count"] += c_res.get("stats", {}).get("classes_count", 0)
+            complexity_res["stats"]["functions_count"] += c_res.get("stats", {}).get("functions_count", 0)
+            complexity_res["stats"]["avg_complexity"] += c_res.get("stats", {}).get("avg_complexity", 0)
+            mi_scores.append(c_res.get("mi", {}).get("score", 100.0))
+        else:
+            # JS files
+            lines = rec["content"].splitlines()
+            complexity_res["raw"]["loc"] += len(lines)
+            complexity_res["raw"]["sloc"] += len([l for l in lines if l.strip()])
+            mi_scores.append(90.0)
+
+    # Compute averaged scores across all uploaded files
+    if pylint_scores:
+        pylint_res["score"] = round(sum(pylint_scores) / len(pylint_scores), 2)
     else:
-        # JS files mock static analysis to keep the API unified, count lines of code
-        lines = code_content.splitlines()
-        complexity_res["raw"]["loc"] = len(lines)
-        complexity_res["raw"]["sloc"] = len([l for l in lines if l.strip()])
-        complexity_res["mi"]["score"] = 90.0
+        pylint_res["score"] = 100.0
 
-    # Stage 3: AI Code Review
-    ai_res = run_ai_review(code_content, filename, api_key_header)
+    if mi_scores:
+        avg_mi = round(sum(mi_scores) / len(mi_scores), 2)
+        complexity_res["mi"]["score"] = avg_mi
+        complexity_res["mi"]["rank"] = get_mi_rank(avg_mi)
 
-    # Use AI score as primary if available, otherwise fallback to pylint
+    if num_python > 0:
+        complexity_res["stats"]["avg_complexity"] = round(complexity_res["stats"]["avg_complexity"] / num_python, 2)
+        classes = complexity_res["stats"]["classes_count"]
+        funcs = complexity_res["stats"]["functions_count"]
+        sloc = complexity_res["raw"]["sloc"]
+        complexity_res["stats"]["avg_func_length"] = round(sloc / max(1, funcs), 1) if funcs > 0 else 0
+
+    # Call Gemini model on the combined code
+    ai_res = run_ai_review(code_content_combined, project_name, api_key_header)
+
+    # Final unified score math
     review_score = 100.0
     if ai_res.get("enabled") and "score" in ai_res:
         review_score = ai_res["score"]
-    elif is_python:
-        review_score = pylint_res.get("score", 100.0)
+    else:
+        review_score = pylint_res["score"]
 
     summary = ai_res.get("summary", "Analysis completed successfully.") if ai_res.get("enabled") else "Static analysis completed. Configure Gemini API key for detailed AI suggestions."
 
     try:
         # Save project and review in DB
-        project = Project(user_id=int(user_id), project_name=filename, upload_type=upload_type)
+        project = Project(user_id=int(user_id), project_name=project_name, upload_type=upload_type)
         db.session.add(project)
-        db.session.flush() # Populate project.id
+        db.session.flush()
 
         review = Review(
             project_id=project.id,
@@ -128,9 +200,9 @@ def upload_or_submit():
             ai_analysis_result=json.dumps(ai_res)
         )
         db.session.add(review)
-        db.session.flush() # Populate review.id
+        db.session.flush()
 
-        # Populate findings
+        # Save relational findings
         # 1. Pylint findings
         for f in pylint_res.get("findings", []):
             finding = ReviewFinding(
@@ -139,7 +211,7 @@ def upload_or_submit():
                 issue=f["symbol"],
                 explanation=f["message"],
                 suggestion=f"Refactoring recommended for line {f['line']}.",
-                file_name=filename,
+                file_name=f.get("file_name", project_name),
                 line_number=f["line"]
             )
             db.session.add(finding)
@@ -152,7 +224,7 @@ def upload_or_submit():
                 issue=f["symbol"],
                 explanation=f["message"],
                 suggestion="Apply secure coding practices.",
-                file_name=filename,
+                file_name=f.get("file_name", project_name),
                 line_number=f["line"]
             )
             db.session.add(finding)
@@ -166,17 +238,17 @@ def upload_or_submit():
                     issue=f.get("issue", "AI Finding"),
                     explanation=f.get("explanation", ""),
                     suggestion=f.get("suggestion", ""),
-                    file_name=f.get("file_name", filename),
+                    file_name=f.get("file_name", project_name),
                     line_number=f.get("line_number")
                 )
                 db.session.add(finding)
 
         db.session.commit()
 
-        # Build response
+        # Return full payload
         return jsonify({
             "review_id": review.id,
-            "filename": filename,
+            "filename": project_name,
             "upload_type": upload_type,
             "score": review_score,
             "summary": summary,
@@ -185,79 +257,6 @@ def upload_or_submit():
             "complexity": complexity_res,
             "ai": ai_res
         }), 201
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
-@review_bp.route("/history", methods=["GET"])
-@jwt_required()
-def get_history():
-    user_id = get_jwt_identity()
-    try:
-        search = request.args.get("search", "")
-        min_score = request.args.get("min_score", type=int)
-        max_score = request.args.get("max_score", type=int)
-
-        # Fetch projects belonging to this user
-        query = db.session.query(Review).join(Project).filter(Project.user_id == int(user_id))
-
-        if search:
-            query = query.filter(Project.project_name.like(f"%{search}%"))
-
-        if min_score is not None:
-            query = query.filter(Review.review_score >= min_score)
-        
-        if max_score is not None:
-            query = query.filter(Review.review_score <= max_score)
-
-        reviews = query.order_by(Review.created_at.desc()).all()
-
-        return jsonify([r.to_dict() for r in reviews]), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@review_bp.route("/reviews/<int:review_id>", methods=["GET"])
-@jwt_required()
-def get_review(review_id):
-    user_id = get_jwt_identity()
-    try:
-        review = Review.query.get(review_id)
-        if not review:
-            return jsonify({"error": "Review not found"}), 404
-
-        # Access check
-        if review.project.user_id != int(user_id):
-            return jsonify({"error": "Unauthorized access to this review"}), 403
-
-        return jsonify(review.to_dict()), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@review_bp.route("/reviews/<int:review_id>", methods=["DELETE"])
-@jwt_required()
-def delete_review(review_id):
-    user_id = get_jwt_identity()
-    try:
-        review = Review.query.get(review_id)
-        if not review:
-            return jsonify({"error": "Review not found"}), 404
-
-        # Access check
-        if review.project.user_id != int(user_id):
-            return jsonify({"error": "Unauthorized"}), 403
-
-        # Project is cascade deleted because review has a ForeignKey cascade delete or is cascade mapped
-        project = review.project
-        db.session.delete(project)
-        db.session.commit()
-
-        return jsonify({"message": "Review deleted successfully"}), 200
 
     except Exception as e:
         db.session.rollback()

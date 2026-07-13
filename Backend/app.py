@@ -9,7 +9,7 @@ def create_app():
     app.config.from_object(Config)
 
     # Initialize CORS & JWT
-    CORS(app)
+    CORS(app, resources={r"/*": {"origins": "*", "allow_headers": ["Content-Type", "Authorization", "X-Gemini-API-Key"], "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]}})
     JWTManager(app)
 
     # Register Blueprints

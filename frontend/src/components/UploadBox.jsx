@@ -12,10 +12,10 @@ function UploadBox({ setFile, uploadFile, loading }) {
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFile(file);
-      setSelectedFileName(file.name);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      setFile(files);
+      setSelectedFileName(files.map((f) => f.name).join(", "));
     }
   };
 
@@ -23,7 +23,7 @@ function UploadBox({ setFile, uploadFile, loading }) {
     <div className="upload-container">
       <div className="upload-box" onClick={handleBoxClick}>
         <FaUpload className="upload-icon" />
-        <h3>Upload Source File</h3>
+        <h3>Upload Source Files</h3>
         <p>Drag and drop or browse files. Supports .py and .js files</p>
         
         <input
@@ -31,6 +31,7 @@ function UploadBox({ setFile, uploadFile, loading }) {
           ref={fileInputRef}
           className="file-input"
           accept=".py,.js"
+          multiple
           onChange={handleFileChange}
         />
 

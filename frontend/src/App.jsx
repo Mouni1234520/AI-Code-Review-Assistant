@@ -138,7 +138,13 @@ function App() {
     const token = localStorage.getItem("access_token");
     const storedKey = localStorage.getItem("gemini_api_key") || "";
     const formData = new FormData();
-    formData.append("file", file);
+    if (Array.isArray(file)) {
+      file.forEach((f) => {
+        formData.append("file", f);
+      });
+    } else {
+      formData.append("file", file);
+    }
 
     setLoading(true);
     clearAnalysis();
@@ -149,7 +155,6 @@ function App() {
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
             "Authorization": `Bearer ${token}`,
             "X-Gemini-API-Key": storedKey
           }
