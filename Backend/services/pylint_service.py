@@ -1,30 +1,62 @@
-import json
-import os
 import subprocess
+import json
 
+def analyze_pylint(file_path):
+    """
+    Run pylint on the target file and return parsed findings and calculated score.
+    """
+    try:
+        result = subprocess.run(
+            ["pylint", file_path, "--output-format=json"],
+            capture_output=True,
+            text=True
+        )
 
-def analyze_python_file(path):
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    env = os.environ.copy()
-    pythonpath = env.get("PYTHONPATH", "")
-    paths = [project_root]
-    if pythonpath:
-        paths.append(pythonpath)
-    env["PYTHONPATH"] = os.pathsep.join(paths)
+        findings = []
+        if result.stdout:
+            try:
+                findings = json.loads(result.stdout)
+            except json.JSONDecodeError:
+                pass
 
-    result = subprocess.run(
-        [
-            "pylint",
-            path,
-            "--output-format=json"
-        ],
-        capture_output=True,
-        text=True,
-        cwd=project_root,
-        env=env
-    )
+        # Calculate a Code Quality Score out of 100
+        # Deduct based on finding severity
+        score = 100.0
+        for item in findings:
+            msg_type = item.get("type", "").lower()
+            if msg_type in ("error", "fatal"):
+                score -= 10.0
+            elif msg_type == "warning":
+                score -= 5.0
+            elif msg_type == "refactor":
+                score -= 2.0
+            elif msg_type == "convention":
+                score -= 1.0
+            else:
+                score -= 1.0
 
-    if result.stdout:
-        return json.loads(result.stdout)
+        score = max(0.0, score)
 
-    return []
+        # Standardize finding format for consistency
+        formatted_findings = []
+        for item in findings:
+            formatted_findings.append({
+                "line": item.get("line", 1),
+                "column": item.get("column", 0),
+                "message": item.get("message", ""),
+                "symbol": item.get("symbol", ""),
+                "type": item.get("type", "warning"),
+                "message_id": item.get("message-id", "")
+            })
+
+        return {
+            "findings": formatted_findings,
+            "score": round(score, 2)
+        }
+
+    except Exception as e:
+        return {
+            "findings": [],
+            "score": 0.0,
+            "error": str(e)
+        }

@@ -1,25 +1,42 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from database import init_db
+from config import Config
 
-try:
-    from .routes.review import review_bp
-except ImportError:
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
+
+    # Initialize CORS & JWT
+    CORS(app)
+    JWTManager(app)
+
+    # Register Blueprints
+    from routes.auth import auth_bp
     from routes.review import review_bp
+    from routes.report import report_bp
 
-app = Flask(__name__)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(review_bp)
+    app.register_blueprint(report_bp)
 
-CORS(app)
+    # Initialize Database with SQLAlchemy
+    init_db(app)
 
-app.register_blueprint(review_bp)
+    @app.route("/")
+    def home():
+        return jsonify({
+            "status": "online",
+            "service": "AI Code Review Assistant API"
+        }), 200
 
-@app.route("/")
-def home():
-    return "AI Code Review Assistant Running"
+    return app
 
-
-def main():
-    app.run(debug=True, use_reloader=False)
-
+app = create_app()
 
 if __name__ == "__main__":
-    main()
+    app.run(
+        debug=True,
+        port=5000
+    )
