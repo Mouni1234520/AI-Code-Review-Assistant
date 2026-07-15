@@ -26,7 +26,7 @@ def allowed_file(filename):
 @jwt_required()
 def upload_or_submit():
     user_id = get_jwt_identity()
-    api_key_header = request.headers.get("X-Gemini-API-Key")
+    api_key_header = request.headers.get("X-Mistral-API-Key")
 
     # Check if multiple files were uploaded under the "file" key
     uploaded_files = request.files.getlist("file") if "file" in request.files else []
@@ -182,7 +182,7 @@ def upload_or_submit():
     else:
         review_score = pylint_res["score"]
 
-    summary = ai_res.get("summary", "Analysis completed successfully.") if ai_res.get("enabled") else "Static analysis completed. Configure Gemini API key for detailed AI suggestions."
+    summary = ai_res.get("summary", "Analysis completed successfully.") if ai_res.get("enabled") else "Static analysis completed. Configure Mistral API key for detailed AI suggestions."
 
     try:
         # Save project and review in DB

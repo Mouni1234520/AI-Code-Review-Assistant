@@ -24,7 +24,7 @@ function App() {
   const [activeTab, setActiveTab] = useState("dashboard"); // 'dashboard', 'history', 'settings'
   
   // Settings
-  const [geminiKey, setGeminiKey] = useState("");
+  const [mistralKey, setMistralKey] = useState("");
   const [keySaved, setKeySaved] = useState(false);
   
   // Password change state
@@ -51,7 +51,7 @@ function App() {
     const token = localStorage.getItem("access_token");
     const storedUsername = localStorage.getItem("username");
     const storedEmail = localStorage.getItem("email");
-    const storedKey = localStorage.getItem("gemini_api_key");
+    const storedKey = localStorage.getItem("mistral_api_key");
 
     if (token) {
       setIsAuthenticated(true);
@@ -59,7 +59,7 @@ function App() {
       setUserEmail(storedEmail || "");
     }
     if (storedKey) {
-      setGeminiKey(storedKey);
+      setMistralKey(storedKey);
     }
   }, []);
 
@@ -95,9 +95,9 @@ function App() {
     setSummary("");
   };
 
-  const saveGeminiKey = (e) => {
+  const saveMistralKey = (e) => {
     e.preventDefault();
-    localStorage.setItem("gemini_api_key", geminiKey);
+    localStorage.setItem("mistral_api_key", mistralKey);
     setKeySaved(true);
     setTimeout(() => setKeySaved(false), 2000);
   };
@@ -136,7 +136,7 @@ function App() {
     }
 
     const token = localStorage.getItem("access_token");
-    const storedKey = localStorage.getItem("gemini_api_key") || "";
+    const storedKey = localStorage.getItem("mistral_api_key") || "";
     const formData = new FormData();
     if (Array.isArray(file)) {
       file.forEach((f) => {
@@ -156,7 +156,7 @@ function App() {
         {
           headers: {
             "Authorization": `Bearer ${token}`,
-            "X-Gemini-API-Key": storedKey
+            "X-Mistral-API-Key": storedKey
           }
         }
       );
@@ -174,7 +174,7 @@ function App() {
   // Perform snippet code audit
   const analyzeSnippet = async (code, language, filename) => {
     const token = localStorage.getItem("access_token");
-    const storedKey = localStorage.getItem("gemini_api_key") || "";
+    const storedKey = localStorage.getItem("mistral_api_key") || "";
 
     setLoading(true);
     clearAnalysis();
@@ -187,7 +187,7 @@ function App() {
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
-            "X-Gemini-API-Key": storedKey
+            "X-Mistral-API-Key": storedKey
           }
         }
       );
@@ -241,7 +241,7 @@ function App() {
           <>
             <div className="page-header">
               <h1>Code Audit Dashboard</h1>
-              <p>Analyze python files or snippets using static tools and Gemini AI reviews</p>
+              <p>Analyze python files or snippets using static tools and Mistral AI reviews</p>
             </div>
 
             <div className="dashboard-grid">
@@ -367,19 +367,19 @@ function App() {
             </div>
 
             <div className="card-panel">
-              <h3 style={{ fontSize: "16px", marginBottom: "15px" }}>🔑 Gemini API Key Configuration</h3>
-              <form onSubmit={saveGeminiKey} className="settings-form">
+              <h3 style={{ fontSize: "16px", marginBottom: "15px" }}>🔑 Mistral API Key Configuration</h3>
+              <form onSubmit={saveMistralKey} className="settings-form">
                 <div className="form-group">
-                  <label>Google Gemini API Key</label>
+                  <label>Mistral AI API Key</label>
                   <input
                     type="password"
-                    value={geminiKey}
-                    onChange={(e) => setGeminiKey(e.target.value)}
-                    placeholder="Enter your AI Gemini API Key"
+                    value={mistralKey}
+                    onChange={(e) => setMistralKey(e.target.value)}
+                    placeholder="Enter your Mistral AI API Key"
                     style={{ border: "1.5px solid var(--border-color)" }}
                   />
                   <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "6px" }}>
-                    Stored locally in your browser workspace. Key is sent in headers to audit JavaScript code or provide semantic refactoring.
+                    Stored locally in your browser workspace. Key is sent in headers to audit Python code or provide semantic refactoring.
                   </p>
                 </div>
                 <button type="submit" className="btn-save">

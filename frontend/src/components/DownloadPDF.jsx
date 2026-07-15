@@ -35,7 +35,7 @@ function DownloadPDF({ filename, score, summary, pylint, security, complexity, a
     if (ai?.enabled) {
       pdf.text(`AI Review Score: ${ai.score}/100`, 25, 78);
     } else {
-      pdf.text("AI Review Score: N/A (Gemini Key not configured)", 25, 78);
+      pdf.text("AI Review Score: N/A (Mistral Key not configured)", 25, 78);
     }
     
     // Summary

@@ -20,7 +20,7 @@ function ProjectInfo() {
         <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
           <FaBrain style={{ color: "#a855f7", fontSize: "20px", marginTop: "2px" }} />
           <div>
-            <h4 style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)" }}>Gemini AI Engine</h4>
+            <h4 style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-primary)" }}>Mistral AI Engine</h4>
             <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
               Generates bug audits, performance optimization advice, and clean refactoring models.
             </p>

@@ -15,6 +15,11 @@ function Register({ onClose, onRegisterSuccess }) {
         setError("");
         setSuccess("");
 
+        if (!/^[a-zA-Z]+$/.test(username)) {
+            setError("Username must contain only alphabetic characters");
+            return;
+        }
+
         if (password !== confirmPassword) {
             setError("Passwords do not match");
             return;

@@ -20,6 +20,9 @@ def register():
         if not username or not password:
             return jsonify({"error": "Username and password required"}), 400
 
+        if not username.isalpha():
+            return jsonify({"error": "Username must contain only alphabetic characters"}), 400
+
         # Check if username exists
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:

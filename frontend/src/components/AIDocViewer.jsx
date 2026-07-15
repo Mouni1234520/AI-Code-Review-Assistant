@@ -13,7 +13,7 @@ function AIDocViewer({ documentation }) {
   if (!documentation || (!documentation.module && (!documentation.classes || documentation.classes.length === 0) && (!documentation.functions || documentation.functions.length === 0))) {
     return (
       <div style={{ color: "var(--text-secondary)", fontStyle: "italic", padding: "10px" }}>
-        No docstrings generated. Ensure your code contains classes or functions, and Gemini API is enabled.
+        No docstrings generated. Ensure your code contains classes or functions, and Mistral API is enabled.
       </div>
     );
   }
