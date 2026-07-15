@@ -261,3 +261,34 @@ def upload_or_submit():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
+@review_bp.route("/history", methods=["GET"])
+@jwt_required()
+def get_history():
+    try:
+        user_id = get_jwt_identity()
+        projects = Project.query.filter_by(user_id=int(user_id)).all()
+        project_ids = [p.id for p in projects]
+        reviews = Review.query.filter(Review.project_id.in_(project_ids)).order_by(Review.created_at.desc()).all()
+        return jsonify([r.to_dict() for r in reviews]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@review_bp.route("/reviews/<int:review_id>", methods=["DELETE"])
+@jwt_required()
+def delete_review(review_id):
+    try:
+        user_id = get_jwt_identity()
+        review = Review.query.get(review_id)
+        if not review:
+            return jsonify({"error": "Review not found"}), 404
+        if review.project.user_id != int(user_id):
+            return jsonify({"error": "Unauthorized"}), 403
+        db.session.delete(review)
+        db.session.commit()
+        return jsonify({"message": "Review deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500

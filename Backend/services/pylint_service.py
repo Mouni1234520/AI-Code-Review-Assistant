@@ -1,15 +1,26 @@
 import subprocess
 import json
+import os
 
 def analyze_pylint(file_path):
     """
     Run pylint on the target file and return parsed findings and calculated score.
     """
     try:
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        env = os.environ.copy()
+        python_path = env.get("PYTHONPATH", "")
+        if python_path:
+            env["PYTHONPATH"] = project_root + os.pathsep + python_path
+        else:
+            env["PYTHONPATH"] = project_root
+
         result = subprocess.run(
             ["pylint", file_path, "--output-format=json"],
             capture_output=True,
-            text=True
+            text=True,
+            cwd=project_root,
+            env=env
         )
 
         findings = []
