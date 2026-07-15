@@ -22,6 +22,32 @@
   --text-muted: #6b7280;
 }
 
+.light-theme {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #f1f5f9;
+  --bg-sidebar: #f8fafc;
+  --border-color: #e2e8f0;
+  --border-glow: rgba(99, 102, 241, 0.05);
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-glow: rgba(79, 70, 229, 0.2);
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+}
+
+body, .sidebar, .card-panel, .navbar, .nav-item, input, select, textarea, button, .history-item {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
 * {
   margin: 0;
   padding: 0;
