@@ -971,30 +971,7 @@ function App() {
                 <>
                   <div className="page-header">
                     <h1>Settings & Config</h1>
-                    <p>Manage third-party LLM API keys and reset your profile password</p>
-                  </div>
-
-                  <div className="card-panel">
-                    <h3 style={{ fontSize: "16px", marginBottom: "15px" }}>🔑 Mistral API Key Configuration</h3>
-                    <form onSubmit={saveMistralKey} className="settings-form">
-                      <div className="form-group">
-                        <label>Mistral AI API Key</label>
-                        <input
-                          type="password"
-                          value={mistralKey}
-                          onChange={(e) => setMistralKey(e.target.value)}
-                          placeholder="Enter your Mistral AI API Key"
-                          style={{ border: "1.5px solid var(--border-color)", width: "100%", padding: "12px", background: "var(--bg-primary)", color: "var(--text-primary)", borderRadius: "8px" }}
-                        />
-                        <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "6px" }}>
-                          Stored locally in your browser workspace. Key is sent in headers to audit Python code or provide semantic refactoring.
-                        </p>
-                      </div>
-                      <button type="submit" className="btn-save">
-                        {keySaved ? <FaCheck /> : null}
-                        {keySaved ? "Saved Key" : "Save Key Configuration"}
-                      </button>
-                    </form>
+                    <p>Manage and reset your profile password</p>
                   </div>
 
                   <div className="card-panel">

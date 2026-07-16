@@ -5,6 +5,7 @@ import "./Auth.css";
 
 function Login({ onLoginSuccess }) {
     const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -20,6 +21,7 @@ function Login({ onLoginSuccess }) {
                 "http://127.0.0.1:5000/login",
                 {
                     username,
+                    email,
                     password
                 }
             );
@@ -28,6 +30,7 @@ function Login({ onLoginSuccess }) {
             localStorage.setItem("access_token", response.data.access_token);
             localStorage.setItem("user_id", response.data.user_id);
             localStorage.setItem("username", response.data.username);
+            localStorage.setItem("email", response.data.email);
 
             // Call the callback to update parent component
             onLoginSuccess();
@@ -53,6 +56,17 @@ function Login({ onLoginSuccess }) {
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder="Enter username"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Email Address</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="Enter email address"
                             required
                         />
                     </div>

@@ -4,6 +4,7 @@ import "./Auth.css";
 
 function Register({ onClose, onRegisterSuccess }) {
     const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -37,6 +38,7 @@ function Register({ onClose, onRegisterSuccess }) {
                 "http://127.0.0.1:5000/register",
                 {
                     username,
+                    email,
                     password
                 }
             );
@@ -45,6 +47,7 @@ function Register({ onClose, onRegisterSuccess }) {
 
             setSuccess("Registration successful! You can now login.");
             setUsername("");
+            setEmail("");
             setPassword("");
             setConfirmPassword("");
 
@@ -128,6 +131,19 @@ function Register({ onClose, onRegisterSuccess }) {
                                 setUsername(e.target.value)
                             }
                             placeholder="Choose a username"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Email Address</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) =>
+                                setEmail(e.target.value)
+                            }
+                            placeholder="Enter your email"
                             required
                         />
                     </div>

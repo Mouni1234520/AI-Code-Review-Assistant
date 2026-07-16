@@ -17,8 +17,8 @@ def register():
         password = data.get("password")
         email = data.get("email")
 
-        if not username or not password:
-            return jsonify({"error": "Username and password required"}), 400
+        if not username or not password or not email:
+            return jsonify({"error": "Username, password, and email required"}), 400
 
         if not username.isalpha():
             return jsonify({"error": "Username must contain only alphabetic characters"}), 400
@@ -28,10 +28,9 @@ def register():
         if existing_user:
             return jsonify({"error": "Username already exists"}), 400
 
-        if email:
-            existing_email = User.query.filter_by(email=email).first()
-            if existing_email:
-                return jsonify({"error": "Email already exists"}), 400
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email:
+            return jsonify({"error": "Email already exists"}), 400
 
         # Create user
         new_user = User(username=username, email=email)
@@ -55,14 +54,15 @@ def login():
             return jsonify({"error": "No JSON data received"}), 400
 
         username = data.get("username")
+        email = data.get("email")
         password = data.get("password")
 
-        if not username or not password:
-            return jsonify({"error": "Username and password required"}), 400
+        if not username or not email or not password:
+            return jsonify({"error": "Username, email, and password required"}), 400
 
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter_by(username=username, email=email).first()
         if not user:
-            return jsonify({"error": "User not found"}), 404
+            return jsonify({"error": "User not found with specified username and email"}), 404
 
         if not user.check_password(password):
             return jsonify({"error": "Invalid password"}), 401

@@ -78,6 +78,7 @@ class AppTest(unittest.TestCase):
         # 1. Login to get access token
         login_response = self.client.post("/login", json={
             "username": "TestUser",
+            "email": "test@example.com",
             "password": "password123"
         })
         self.assertEqual(login_response.status_code, 200)
@@ -127,6 +128,7 @@ class AppTest(unittest.TestCase):
         # Login
         login_response = self.client.post("/login", json={
             "username": "TestUser",
+            "email": "test@example.com",
             "password": "password123"
         })
         token = login_response.get_json()["access_token"]
@@ -168,6 +170,7 @@ class AppTest(unittest.TestCase):
         # Login
         login_response = self.client.post("/login", json={
             "username": "TestUser",
+            "email": "test@example.com",
             "password": "password123"
         })
         token = login_response.get_json()["access_token"]
