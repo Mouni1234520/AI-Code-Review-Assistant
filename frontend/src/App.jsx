@@ -22,6 +22,7 @@ import AIDocViewer from "./components/AIDocViewer";
 import HistoryList from "./components/HistoryList";
 import TasksPage from "./components/TasksPage";
 import AnalyticsPage from "./components/AnalyticsPage";
+import ResetPassword from "./components/ResetPassword";
 
 function DashboardOverview({ username, history, recentActivity, tasksCount }) {
   const totalReviews = history.length;
@@ -726,7 +727,11 @@ function App() {
   };
 
   // Show login page if not authenticated
+  const isResetPage = window.location.hash.startsWith("#/reset-password");
   if (!isAuthenticated) {
+    if (isResetPage) {
+      return <ResetPassword />;
+    }
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
@@ -962,6 +967,12 @@ function App() {
             <Route 
               path="/analytics" 
               element={<AnalyticsPage />} 
+            />
+
+            {/* Reset Password route */}
+            <Route 
+              path="/reset-password" 
+              element={<ResetPassword />} 
             />
 
             {/* 6. Settings route */}
