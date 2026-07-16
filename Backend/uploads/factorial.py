@@ -4,7 +4,7 @@ def calculate_factorial(n):
         return None
     elif n == 0:
         return 1
-    else:
+    else
         # A simple recursive implementation
         result = 1
         for i in range(1, n + 1):

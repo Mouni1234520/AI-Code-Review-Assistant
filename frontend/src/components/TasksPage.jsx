@@ -21,6 +21,7 @@ function TasksPage() {
   const saveTasks = (newTasks) => {
     setTasks(newTasks);
     localStorage.setItem("code_review_tasks", JSON.stringify(newTasks));
+    window.dispatchEvent(new Event("tasks_updated"));
   };
 
   const handleAddTask = (e) => {
@@ -124,14 +125,53 @@ function TasksPage() {
           ) : (
             <div className="task-list">
               {tasks.map(t => (
-                <div key={t.id} className={`task-item ${t.completed ? "completed" : ""}`}>
+                <div key={t.id} className={`task-item ${t.completed ? "completed" : ""} ${t.rectified ? "rectified" : ""}`}>
                   <div className="task-item-left" onClick={() => toggleTaskCompletion(t.id)}>
                     <div className="task-checkbox-wrapper">
-                      <div className="task-checkbox">
-                        {t.completed && <FaCheck style={{ fontSize: "10px" }} />}
+                      <div className="task-checkbox" style={{
+                        backgroundColor: t.rectified ? "var(--success)" : undefined,
+                        borderColor: t.rectified ? "var(--success)" : undefined,
+                      }}>
+                        {(t.completed || t.rectified) && <FaCheck style={{ fontSize: "10px", color: "#fff" }} />}
                       </div>
                     </div>
-                    <span className="task-title">{t.text}</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-start" }}>
+                      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                        {t.file && (
+                          <span className="task-file-badge" style={{
+                            background: "rgba(255, 255, 255, 0.05)",
+                            border: "1px solid var(--border-color)",
+                            color: "var(--text-secondary)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            fontSize: "11px",
+                            fontFamily: "monospace"
+                          }}>
+                            {t.file}
+                          </span>
+                        )}
+                        {t.rectified && (
+                          <span className="task-rectified-badge" style={{
+                            background: "rgba(16, 185, 129, 0.1)",
+                            border: "1px solid var(--success)",
+                            color: "var(--success)",
+                            padding: "2px 8px",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}>
+                            ✓ Rectified
+                          </span>
+                        )}
+                      </div>
+                      <span className="task-title" style={{
+                        textDecoration: (t.completed || t.rectified) ? "line-through" : "none",
+                        color: (t.completed || t.rectified) ? "var(--text-muted)" : "var(--text-primary)"
+                      }}>{t.text}</span>
+                    </div>
                   </div>
                   
                   <button 

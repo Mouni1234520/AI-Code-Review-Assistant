@@ -333,6 +333,16 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    const handleTasksUpdate = () => {
+      refreshTasksCount();
+    };
+    window.addEventListener("tasks_updated", handleTasksUpdate);
+    return () => {
+      window.removeEventListener("tasks_updated", handleTasksUpdate);
+    };
+  }, []);
+
   const fetchHistory = async (token) => {
     try {
       const response = await axios.get("http://127.0.0.1:5000/history", {
@@ -569,6 +579,127 @@ function App() {
     }
   };
 
+  const syncTasksForFile = (filename, pylintData, securityData, complexityData) => {
+    const stored = localStorage.getItem("code_review_tasks");
+    let currentTasks = [];
+    if (stored) {
+      try {
+        currentTasks = JSON.parse(stored);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const pylintFindings = Array.isArray(pylintData) ? pylintData : (pylintData?.findings || []);
+    const formatPylintData = () => {
+      return pylintFindings.map((item) => {
+        const msgType = (item.type || "warning").toLowerCase();
+        let sev = "low";
+        if (["error", "fatal"].includes(msgType)) sev = "high";
+        else if (msgType === "warning") sev = "medium";
+        else if (msgType === "refactor" || msgType === "convention") sev = "low";
+        
+        return {
+          tool: "Pylint",
+          type: msgType,
+          severity: sev,
+          line: item.line || "N/A",
+          message: item.message || "",
+          rule: item.symbol || "LINT"
+        };
+      });
+    };
+
+    const formatSecurityData = () => {
+      const findings = securityData?.results || [];
+      return findings.map((item) => ({
+        tool: "Bandit",
+        type: "security",
+        severity: item.severity ? item.severity.toLowerCase() : "medium",
+        line: item.line || "N/A",
+        message: item.message || "",
+        rule: item.symbol || "SECURITY"
+      }));
+    };
+
+    const formatComplexityData = () => {
+      const blocks = complexityData?.complexity || [];
+      return blocks.map((item) => {
+        const rank = item.rank || "A";
+        let sev = "info";
+        if (["E", "F"].includes(rank)) sev = "high";
+        else if (["C", "D"].includes(rank)) sev = "medium";
+        else sev = "low";
+
+        return {
+          tool: "Radon",
+          type: item.type || "function",
+          severity: sev,
+          line: item.line || "N/A",
+          message: `Cyclomatic Complexity of ${item.type} '${item.name}' is ${item.complexity} (Rank ${item.rank})`,
+          rule: `CC_RANK_${item.rank}`
+        };
+      });
+    };
+
+    const findings = [
+      ...formatPylintData(),
+      ...formatSecurityData(),
+      ...formatComplexityData()
+    ];
+
+    // 1. Update existing tasks for this file
+    const updatedTasks = currentTasks.map(t => {
+      if (t.file === filename) {
+        // Look for matching finding in the new analysis
+        const stillExists = findings.some(f => 
+          f.tool === t.tool &&
+          f.rule === t.rule &&
+          f.message === t.message
+        );
+        if (!stillExists) {
+          // No longer exists, so it's rectified
+          return { ...t, completed: true, rectified: true };
+        } else {
+          // Still exists, so keep active
+          return { ...t, completed: false, rectified: false };
+        }
+      }
+      return t;
+    });
+
+    // 2. Add any new findings that aren't already represented in the tasks list
+    const newTasksToAdd = [];
+    findings.forEach(finding => {
+      const alreadyHasTask = updatedTasks.some(t => 
+        t.file === filename &&
+        t.tool === finding.tool &&
+        t.rule === finding.rule &&
+        t.message === finding.message
+      );
+      if (!alreadyHasTask) {
+        newTasksToAdd.push({
+          id: Date.now() + Math.random(),
+          text: `[${finding.tool}] ${finding.rule} at line ${finding.line}: ${finding.message}`,
+          file: filename,
+          tool: finding.tool,
+          rule: finding.rule,
+          line: finding.line,
+          message: finding.message,
+          severity: finding.severity,
+          completed: false,
+          rectified: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    const finalTasks = [...newTasksToAdd, ...updatedTasks];
+    localStorage.setItem("code_review_tasks", JSON.stringify(finalTasks));
+    refreshTasksCount();
+    window.dispatchEvent(new Event("tasks_updated"));
+  };
+
   const loadAnalysisData = (data) => {
     setReviewId(data.review_id);
     setCurrentFilename(data.filename);
@@ -578,6 +709,9 @@ function App() {
     setAiResult(data.ai || null);
     setScore(data.score !== undefined ? data.score : 100);
     setSummary(data.summary || "");
+
+    // Sync findings with tasks list
+    syncTasksForFile(data.filename, data.pylint, data.security, data.complexity);
   };
 
   const handleLoadPreviousReview = (review) => {
@@ -604,6 +738,7 @@ function App() {
           mobileOpen={mobileSidebarOpen}
           setMobileOpen={setMobileSidebarOpen}
           onLogout={handleLogout}
+          tasksCount={tasksCount}
         />
         
         <main className="main-content" style={{ width: "100%" }}>

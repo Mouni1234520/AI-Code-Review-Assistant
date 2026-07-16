@@ -5,7 +5,7 @@ import {
   FaTasks, FaFileAlt, FaChartBar, FaQuestionCircle, FaUser, FaTimes, FaTachometerAlt
 } from "react-icons/fa";
 
-function Sidebar({ username, onLogout, mobileOpen, setMobileOpen }) {
+function Sidebar({ username, onLogout, mobileOpen, setMobileOpen, tasksCount }) {
   const getInitials = (name) => {
     if (!name) return "U";
     return name.slice(0, 2).toUpperCase();
@@ -61,7 +61,21 @@ function Sidebar({ username, onLogout, mobileOpen, setMobileOpen }) {
           onClick={closeMobileSidebar}
         >
           <FaTasks />
-          Tasks
+          <span>Tasks</span>
+          {tasksCount > 0 && (
+            <span style={{
+              marginLeft: "auto",
+              background: "var(--warning)",
+              color: "#0a0e17",
+              fontSize: "11px",
+              fontWeight: "700",
+              padding: "2px 6px",
+              borderRadius: "10px",
+              lineHeight: "1"
+            }}>
+              {tasksCount}
+            </span>
+          )}
         </NavLink>
 
         <NavLink
