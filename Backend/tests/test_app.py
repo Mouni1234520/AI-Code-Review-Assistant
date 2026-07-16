@@ -202,5 +202,44 @@ class AppTest(unittest.TestCase):
         self.assertEqual(history_resp2.status_code, 200)
         self.assertEqual(len(history_resp2.get_json()), 0)
 
+    def test_java_and_c_metrics(self):
+        from routes.review import parse_code_metrics
+        
+        # 1. Test Java parsing
+        java_code = """
+        // Simple java class
+        public class MathUtils {
+            public static int add(int a, int b) {
+                return a + b;
+            }
+            
+            /*
+             * Multi-line comment
+             */
+            public int subtract(int a, int b) {
+                return a - b;
+            }
+        }
+        """
+        classes, funcs, loc, sloc, comments, blanks = parse_code_metrics(java_code, "MathUtils.java")
+        self.assertEqual(classes, 1)
+        self.assertEqual(funcs, 2)
+        
+        # 2. Test C parsing
+        c_code = """
+        #include <stdio.h>
+        // Simple C function
+        int multiply(int a, int b) {
+            return a * b;
+        }
+        
+        int main() {
+            return 0;
+        }
+        """
+        classes, funcs, loc, sloc, comments, blanks = parse_code_metrics(c_code, "multiply.c")
+        self.assertEqual(classes, 0)
+        self.assertEqual(funcs, 2)
+
 if __name__ == "__main__":
     unittest.main()

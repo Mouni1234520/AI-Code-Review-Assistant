@@ -13,12 +13,16 @@ function UploadBox({ setFile, uploadFile, loading, uploadProgress, isUploading }
   };
 
   const validateFiles = (files) => {
-    const pyFiles = files.filter(f => f.name.endsWith(".py"));
-    if (pyFiles.length !== files.length) {
-      alert("Only Python (.py) files are supported.");
-      return pyFiles;
+    const allowedExtensions = [".py", ".js", ".java", ".c", ".cpp", ".h"];
+    const validFiles = files.filter(f => {
+      const name = f.name.toLowerCase();
+      return allowedExtensions.some(ext => name.endsWith(ext));
+    });
+    if (validFiles.length !== files.length) {
+      alert("Only Python, JavaScript, Java, and C/C++ source files are supported.");
+      return validFiles;
     }
-    return pyFiles;
+    return validFiles;
   };
 
   const handleFileChange = (e) => {
@@ -69,14 +73,14 @@ function UploadBox({ setFile, uploadFile, loading, uploadProgress, isUploading }
         onDrop={handleDrop}
       >
         <FaUpload className="upload-icon" />
-        <h3>Upload Python Files</h3>
-        <p>Drag and drop or click to browse. Supports .py files only</p>
+        <h3>Upload Source Files</h3>
+        <p>Drag and drop or click to browse. Supports .py, .js, .java, and .c files.</p>
         
         <input
           type="file"
           ref={fileInputRef}
           className="file-input"
-          accept=".py"
+          accept=".py,.js,.java,.c,.cpp,.h"
           multiple
           onChange={handleFileChange}
         />

@@ -52,6 +52,51 @@ function calculateFactorial(n) {
 console.log(calculateFactorial(5));
 `
       );
+    } else if (lang === "java") {
+      setFilename("Factorial.java");
+      setCode(
+`// Paste your Java code here to analyze it!
+public class Factorial {
+    public static Integer calculateFactorial(int n) {
+        if (n < 0) return null;
+        if (n == 0) return 1;
+        
+        int result = 1;
+        for (int i = 1; i <= n; i++) {
+            result *= i;
+        }
+        return result;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(calculateFactorial(5));
+    }
+}
+`
+      );
+    } else if (lang === "c") {
+      setFilename("factorial.c");
+      setCode(
+`// Paste your C code here to analyze it!
+#include <stdio.h>
+
+long calculateFactorial(int n) {
+    if (n < 0) return -1;
+    if (n == 0) return 1;
+    
+    long result = 1;
+    for (int i = 1; i <= n; i++) {
+        result *= i;
+    }
+    return result;
+}
+
+int main() {
+    printf("%ld\\n", calculateFactorial(5));
+    return 0;
+}
+`
+      );
     } else {
       setFilename("factorial.py");
       setCode(
@@ -86,6 +131,8 @@ print(calculate_factorial(5))
           >
             <option value="python">Python</option>
             <option value="javascript">JavaScript</option>
+            <option value="java">Java</option>
+            <option value="c">C</option>
           </select>
           <input
             type="text"

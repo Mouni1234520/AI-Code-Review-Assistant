@@ -17,7 +17,63 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-ALLOWED_EXTENSIONS = {"py", "js"}
+ALLOWED_EXTENSIONS = {"py", "js", "java", "c", "cpp", "h"}
+
+def parse_code_metrics(content, filename):
+    lines = content.splitlines()
+    loc = len(lines)
+    sloc = 0
+    comments = 0
+    blanks = 0
+    classes = 0
+    functions = 0
+    
+    in_multiline_comment = False
+    ext = filename.split(".")[-1].lower() if "." in filename else ""
+    
+    for line in lines:
+        line_strip = line.strip()
+        
+        # Blank lines
+        if not line_strip:
+            blanks += 1
+            continue
+            
+        # Multiline comments check
+        if in_multiline_comment:
+            comments += 1
+            if "*/" in line_strip:
+                in_multiline_comment = False
+            continue
+            
+        if line_strip.startswith("/*"):
+            comments += 1
+            if "*/" not in line_strip:
+                in_multiline_comment = True
+            continue
+            
+        # Singleline comments check
+        if line_strip.startswith("//") or (ext == "py" and line_strip.startswith("#")):
+            comments += 1
+            continue
+            
+        sloc += 1
+        
+        # Count classes
+        if ext in ("java", "js", "cpp"):
+            if "class " in line_strip or "interface " in line_strip:
+                classes += 1
+                
+        # Count functions
+        if ext == "js":
+            if "function " in line_strip or "=>" in line_strip:
+                functions += 1
+        elif ext in ("java", "c", "cpp", "h"):
+            if "(" in line_strip and ")" in line_strip and ("{" in line_strip or line_strip.endswith(";")):
+                if not any(k in line_strip for k in ("if", "for", "while", "switch", "catch", "else")):
+                    functions += 1
+                    
+    return classes, functions, loc, sloc, comments, blanks
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -45,7 +101,7 @@ def upload_or_submit():
         # Save and prepare all uploaded files
         for file in uploaded_files:
             if not allowed_file(file.filename):
-                return jsonify({"error": f"File '{file.filename}' type not allowed. Only .py and .js files are supported."}), 400
+                return jsonify({"error": f"File '{file.filename}' type not allowed. Only .py, .js, .java, and .c files are supported."}), 400
 
             filename = secure_filename(file.filename)
             filepath = os.path.join(UPLOAD_FOLDER, filename)
@@ -72,8 +128,15 @@ def upload_or_submit():
             return jsonify({"error": "No file uploaded or code snippet received"}), 400
 
         code_content = data.get("code", "")
-        lang = data.get("language", "python")
-        ext = "js" if lang.lower() in ("js", "javascript") else "py"
+        lang = data.get("language", "python").lower()
+        if lang in ("js", "javascript"):
+            ext = "js"
+        elif lang == "java":
+            ext = "java"
+        elif lang in ("c", "cpp", "h"):
+            ext = "c"
+        else:
+            ext = "py"
         filename = data.get("filename", f"snippet.{ext}")
 
         filename = secure_filename(filename)
@@ -148,10 +211,16 @@ def upload_or_submit():
             complexity_res["stats"]["avg_complexity"] += c_res.get("stats", {}).get("avg_complexity", 0)
             mi_scores.append(c_res.get("mi", {}).get("score", 100.0))
         else:
-            # JS files
-            lines = rec["content"].splitlines()
-            complexity_res["raw"]["loc"] += len(lines)
-            complexity_res["raw"]["sloc"] += len([l for l in lines if l.strip()])
+            # JS, Java, C, C++ files
+            classes, funcs, loc, sloc, comments, blanks = parse_code_metrics(rec["content"], fname)
+            
+            complexity_res["raw"]["loc"] += loc
+            complexity_res["raw"]["sloc"] += sloc
+            complexity_res["raw"]["comments"] += comments
+            complexity_res["raw"]["blank"] += blanks
+            
+            complexity_res["stats"]["classes_count"] += classes
+            complexity_res["stats"]["functions_count"] += funcs
             mi_scores.append(90.0)
 
     # Compute averaged scores across all uploaded files
@@ -165,12 +234,15 @@ def upload_or_submit():
         complexity_res["mi"]["score"] = avg_mi
         complexity_res["mi"]["rank"] = get_mi_rank(avg_mi)
 
+    total_funcs = complexity_res["stats"]["functions_count"]
+    total_sloc = complexity_res["raw"]["sloc"]
+    
     if num_python > 0:
         complexity_res["stats"]["avg_complexity"] = round(complexity_res["stats"]["avg_complexity"] / num_python, 2)
-        classes = complexity_res["stats"]["classes_count"]
-        funcs = complexity_res["stats"]["functions_count"]
-        sloc = complexity_res["raw"]["sloc"]
-        complexity_res["stats"]["avg_func_length"] = round(sloc / max(1, funcs), 1) if funcs > 0 else 0
+    else:
+        complexity_res["stats"]["avg_complexity"] = 2.5
+        
+    complexity_res["stats"]["avg_func_length"] = round(total_sloc / max(1, total_funcs), 1) if total_funcs > 0 else 0
 
     # Call Gemini model on the combined code
     ai_res = run_ai_review(code_content_combined, project_name, api_key_header)
