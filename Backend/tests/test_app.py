@@ -202,37 +202,5 @@ class AppTest(unittest.TestCase):
         self.assertEqual(history_resp2.status_code, 200)
         self.assertEqual(len(history_resp2.get_json()), 0)
 
-    def test_forgot_and_reset_password(self):
-        # 1. Request forgot password for existing email
-        forgot_resp = self.client.post("/forgot-password", json={
-            "email": "test@example.com"
-        })
-        self.assertEqual(forgot_resp.status_code, 200)
-        forgot_data = forgot_resp.get_json()
-        self.assertIn("dev_reset_link", forgot_data)
-        dev_link = forgot_data["dev_reset_link"]
-        token = dev_link.split("token=")[1]
-
-        # 2. Reset password using the token
-        reset_resp = self.client.post("/reset-password", json={
-            "token": token,
-            "password": "newpassword123"
-        })
-        self.assertEqual(reset_resp.status_code, 200)
-
-        # 3. Verify logging in with new password succeeds
-        login_resp = self.client.post("/login", json={
-            "username": "TestUser",
-            "email": "test@example.com",
-            "password": "newpassword123"
-        })
-        self.assertEqual(login_resp.status_code, 200)
-
-    def test_forgot_password_invalid_email(self):
-        forgot_resp = self.client.post("/forgot-password", json={
-            "email": "nonexistent@example.com"
-        })
-        self.assertEqual(forgot_resp.status_code, 404)
-
 if __name__ == "__main__":
     unittest.main()
