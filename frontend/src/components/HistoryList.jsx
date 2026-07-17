@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaSearch, FaTrashAlt, FaChevronRight, FaFileAlt } from "react-icons/fa";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 function HistoryList({ onLoadReview, activeReviewId }) {
   const [history, setHistory] = useState([]);
@@ -12,7 +13,7 @@ function HistoryList({ onLoadReview, activeReviewId }) {
     setLoading(true);
     try {
       const token = localStorage.getItem("access_token");
-      const response = await axios.get("http://127.0.0.1:5000/history", {
+      const response = await axios.get(`${API_BASE_URL}/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setHistory(response.data || []);
@@ -34,7 +35,7 @@ function HistoryList({ onLoadReview, activeReviewId }) {
     }
     try {
       const token = localStorage.getItem("access_token");
-      await axios.delete(`http://127.0.0.1:5000/reviews/${reviewId}`, {
+      await axios.delete(`${API_BASE_URL}/reviews/${reviewId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Remove from state

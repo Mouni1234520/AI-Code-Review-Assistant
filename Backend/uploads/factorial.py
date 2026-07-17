@@ -2,7 +2,7 @@
 def calculate_factorial(n):
     if n < 0:
         return None
-    elif n == 0:
+    elif n == 0
         return 1
     else:
         # A simple recursive implementation

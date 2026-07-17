@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { HashRouter as Router, Routes, Route, Navigate, Link } from "react-router-dom";
 import axios from "axios";
+import { API_BASE_URL } from "./config";
 import { 
   FaCode, FaHistory, FaCheck, FaExclamationTriangle, FaBell, FaInfoCircle, FaDownload, 
   FaArrowRight, FaTasks, FaChartBar, FaUserClock, FaRocket, FaUser, FaCog, FaQuestionCircle, FaStar
@@ -345,7 +346,7 @@ function App() {
 
   const fetchHistory = async (token) => {
     try {
-      const response = await axios.get("http://127.0.0.1:5000/history", {
+      const response = await axios.get(`${API_BASE_URL}/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setHistory(response.data || []);
@@ -415,7 +416,7 @@ function App() {
     try {
       const token = localStorage.getItem("access_token");
       await axios.put(
-        "http://127.0.0.1:5000/profile",
+        `${API_BASE_URL}/profile`,
         { password: currentPassword, new_password: newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -484,7 +485,7 @@ function App() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:5000/upload",
+        `${API_BASE_URL}/upload`,
         formData,
         {
           headers: {
@@ -543,7 +544,7 @@ function App() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:5000/upload",
+        `${API_BASE_URL}/upload`,
         { code, language, filename },
         {
           headers: {

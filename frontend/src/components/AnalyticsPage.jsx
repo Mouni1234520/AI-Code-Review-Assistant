@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 import { 
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, 
   PointElement, LineElement, ArcElement, Title, Tooltip, Legend 
@@ -20,7 +21,7 @@ function AnalyticsPage() {
     const fetchHistory = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        const response = await axios.get("http://127.0.0.1:5000/history", {
+        const response = await axios.get(`${API_BASE_URL}/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setHistory(response.data || []);

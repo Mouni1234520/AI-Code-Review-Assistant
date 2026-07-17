@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 import Register from "./Register";
 import "./Auth.css";
 
@@ -18,7 +19,7 @@ function Login({ onLoginSuccess }) {
 
         try {
             const response = await axios.post(
-                "http://127.0.0.1:5000/login",
+                `${API_BASE_URL}/login`,
                 {
                     username,
                     email,
