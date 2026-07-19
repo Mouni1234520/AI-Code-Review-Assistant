@@ -47,7 +47,7 @@ class ExplainAndFixTest(unittest.TestCase):
         }
         
         response = self.client.post(
-            "/explain-and-fix",
+            "/ai-suggestions",
             json={
                 "code": "def hello(): pass",
                 "pylint": {},
@@ -64,7 +64,7 @@ class ExplainAndFixTest(unittest.TestCase):
 
     def test_explain_and_fix_unauthorized(self):
         response = self.client.post(
-            "/explain-and-fix",
+            "/ai-suggestions",
             json={
                 "code": "def hello(): pass"
             }

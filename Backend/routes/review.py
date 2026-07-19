@@ -368,9 +368,9 @@ def delete_review(review_id):
         return jsonify({"error": str(e)}), 500
 
 
-@review_bp.route("/explain-and-fix", methods=["POST"])
+@review_bp.route("/ai-suggestions", methods=["POST"])
 @jwt_required()
-def explain_and_fix():
+def ai_suggestions():
     try:
         api_key_header = request.headers.get("X-Mistral-API-Key")
         data = request.get_json()

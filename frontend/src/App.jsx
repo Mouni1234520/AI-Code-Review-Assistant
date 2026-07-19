@@ -230,6 +230,9 @@ function App() {
   const [score, setScore] = useState(100);
   const [summary, setSummary] = useState("");
   const [currentCodeContent, setCurrentCodeContent] = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState(null);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState("");
   
   // Loader & Progress
   const [loading, setLoading] = useState(false);
@@ -397,6 +400,79 @@ function App() {
     setScore(100);
     setSummary("");
     setCurrentCodeContent("");
+    setAiSuggestions(null);
+    setLoadingSuggestions(false);
+    setSuggestionsError("");
+  };
+
+  const readFilesAsText = async (files) => {
+    if (!files) return "";
+    const fileList = Array.isArray(files) ? files : [files];
+    let combinedText = "";
+    for (const f of fileList) {
+      const text = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => resolve("");
+        reader.readAsText(f);
+      });
+      combinedText += `\n\n# ==========================================\n# FILE: ${f.name}\n# ==========================================\n${text}\n`;
+    }
+    return combinedText;
+  };
+
+  const fetchAISuggestions = async (codeText = "", pylint = null, security = null, complexity = null) => {
+    const finalCode = codeText || currentCodeContent || localStorage.getItem("last_analyzed_code") || "";
+    const finalPylint = pylint || pylintResult;
+    const finalSecurity = security || securityResult;
+    const finalComplexity = complexity || complexityResult;
+
+    if (!finalCode) {
+      setSuggestionsError("No code content available to analyze. Please audit some code first.");
+      return;
+    }
+
+    setLoadingSuggestions(true);
+    setSuggestionsError("");
+    setAiSuggestions(null);
+
+    const storedKey = localStorage.getItem("mistral_api_key") || "";
+    const token = localStorage.getItem("access_token");
+
+    const makeRequest = async () => {
+      return await axios.post(
+        `${API_BASE_URL}/ai-suggestions`,
+        {
+          code: finalCode,
+          pylint: finalPylint,
+          security: finalSecurity,
+          complexity: finalComplexity
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "X-Mistral-API-Key": storedKey
+          }
+        }
+      );
+    };
+
+    try {
+      try {
+        const response = await makeRequest();
+        setAiSuggestions(response.data);
+      } catch (firstErr) {
+        console.warn("First attempt failed, retrying once due to potential temporary network issue...", firstErr);
+        const response = await makeRequest();
+        setAiSuggestions(response.data);
+      }
+    } catch (error) {
+      console.error(error);
+      setSuggestionsError(error.response?.data?.error || "Failed to generate AI Suggestions. Please verify your Mistral API Key and try again.");
+    } finally {
+      setLoadingSuggestions(false);
+    }
   };
 
   const saveMistralKey = (e) => {
@@ -486,6 +562,11 @@ function App() {
     setAnalysisStageIndex(0);
     clearAnalysis();
 
+    // Read and save file content locally
+    const codeText = await readFilesAsText(file);
+    localStorage.setItem("last_analyzed_code", codeText);
+    setCurrentCodeContent(codeText);
+
     try {
       const response = await axios.post(
         `${API_BASE_URL}/upload`,
@@ -515,6 +596,9 @@ function App() {
         setLoading(false);
         loadAnalysisData(response.data);
         
+        // Auto-call suggestions
+        fetchAISuggestions(codeText, response.data.pylint, response.data.security, response.data.complexity);
+
         // Add file uploaded notification
         addNotification(`File uploaded and analyzed: ${response.data.filename}`);
         const updatedActivity = { 
@@ -537,6 +621,9 @@ function App() {
 
   // Perform snippet code audit
   const analyzeSnippet = async (code, language, filename) => {
+    localStorage.setItem("last_analyzed_code", code);
+    setCurrentCodeContent(code);
+
     const token = localStorage.getItem("access_token");
     const storedKey = localStorage.getItem("mistral_api_key") || "";
 
@@ -564,6 +651,9 @@ function App() {
         setLoading(false);
         loadAnalysisData(response.data);
         
+        // Auto-call suggestions
+        fetchAISuggestions(code, response.data.pylint, response.data.security, response.data.complexity);
+
         addNotification(`Code snippet analyzed: ${response.data.filename}`);
         const updatedActivity = { 
           ...recentActivity, 
@@ -728,7 +818,13 @@ function App() {
     setAiResult(review.ai_analysis_result || null);
     setScore(review.review_score !== undefined ? review.review_score : 100);
     setSummary(review.summary || "");
-    setCurrentCodeContent(review.code_content || "");
+    
+    const code = review.code_content || "";
+    setCurrentCodeContent(code);
+    localStorage.setItem("last_analyzed_code", code);
+
+    // Auto-call suggestions
+    fetchAISuggestions(code, review.pylint_result, review.security_result, review.complexity_result);
   };
 
   // Show login page if not authenticated
@@ -835,6 +931,21 @@ function App() {
                     </div>
                   )}
 
+                  {!loading && !pylintResult && (
+                    <AISuggestionsCard 
+                      key="no-analysis"
+                      code={currentCodeContent}
+                      pylint={pylintResult}
+                      security={securityResult}
+                      complexity={complexityResult}
+                      token={localStorage.getItem("access_token")}
+                      aiSuggestions={aiSuggestions}
+                      loading={loadingSuggestions}
+                      error={suggestionsError}
+                      onRetry={() => fetchAISuggestions()}
+                    />
+                  )}
+
                   {!loading && pylintResult && (
                     <div className="card-panel result-card" style={{ marginTop: "25px" }}>
                       <div className="panel-title" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
@@ -905,6 +1016,10 @@ function App() {
                         security={securityResult} 
                         complexity={complexityResult} 
                         token={localStorage.getItem("access_token")} 
+                        aiSuggestions={aiSuggestions}
+                        loading={loadingSuggestions}
+                        error={suggestionsError}
+                        onRetry={() => fetchAISuggestions()}
                       />
 
                       {/* Relational Tabs */}

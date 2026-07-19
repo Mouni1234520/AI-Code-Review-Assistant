@@ -6,30 +6,49 @@ import {
   FaCopy, FaCheck, FaExclamationTriangle, FaMagic, FaRegSmile 
 } from "react-icons/fa";
 
-function AISuggestionsCard({ code, pylint, security, complexity, token }) {
-  const [suggestions, setSuggestions] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+function AISuggestionsCard({ 
+  code, 
+  pylint, 
+  security, 
+  complexity, 
+  token,
+  aiSuggestions: propsSuggestions,
+  loading: propsLoading,
+  error: propsError,
+  onRetry
+}) {
+  const [localSuggestions, setLocalSuggestions] = useState(null);
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localError, setLocalError] = useState("");
   const [expandedIssue, setExpandedIssue] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
 
+  const isControlled = propsSuggestions !== undefined || propsLoading !== undefined;
+
+  const suggestions = isControlled ? propsSuggestions : localSuggestions;
+  const loading = isControlled ? propsLoading : localLoading;
+  const error = isControlled ? propsError : localError;
+
+  const hasAnalysis = pylint !== null && pylint !== undefined;
+
   const generateSuggestions = async () => {
-    if (!code) {
-      setError("No code content available to analyze. Please audit some code first.");
+    const finalCode = code || localStorage.getItem("last_analyzed_code") || "";
+    if (!finalCode) {
+      setLocalError("No code content available to analyze. Please audit some code first.");
       return;
     }
 
-    setLoading(true);
-    setError("");
-    setSuggestions(null);
+    setLocalLoading(true);
+    setLocalError("");
+    setLocalSuggestions(null);
 
     const storedKey = localStorage.getItem("mistral_api_key") || "";
 
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/explain-and-fix`,
+    const makeRequest = async () => {
+      return await axios.post(
+        `${API_BASE_URL}/ai-suggestions`,
         {
-          code,
+          code: finalCode,
           pylint,
           security,
           complexity
@@ -42,13 +61,30 @@ function AISuggestionsCard({ code, pylint, security, complexity, token }) {
           }
         }
       );
+    };
 
-      setSuggestions(response.data);
+    try {
+      try {
+        const response = await makeRequest();
+        setLocalSuggestions(response.data);
+      } catch (firstErr) {
+        console.warn("First local attempt failed, retrying once...", firstErr);
+        const response = await makeRequest();
+        setLocalSuggestions(response.data);
+      }
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || "Failed to generate AI Suggestions. Please verify your Mistral API Key and try again.");
+      setLocalError(err.response?.data?.error || "Failed to generate AI Suggestions. Please verify your Mistral API Key and try again.");
     } finally {
-      setLoading(false);
+      setLocalLoading(false);
+    }
+  };
+
+  const handleAction = () => {
+    if (isControlled && onRetry) {
+      onRetry();
+    } else {
+      generateSuggestions();
     }
   };
 
@@ -65,6 +101,22 @@ function AISuggestionsCard({ code, pylint, security, complexity, token }) {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
+  // Friendly placeholder if no analysis exists
+  if (!hasAnalysis && !localStorage.getItem("last_analyzed_code")) {
+    return (
+      <div className="card-panel ai-suggestions-main-card" style={{ marginTop: "25px", border: "1px solid rgba(99, 102, 241, 0.25)" }}>
+        <div className="panel-title ai-title-gradient">
+          <FaMagic /> AI Explanation & Fix Suggestions
+        </div>
+        <div className="ai-cta-container">
+          <p className="ai-cta-desc" style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
+            Please write a code snippet or upload a file first to run a code review and view AI explanations & fix suggestions.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card-panel ai-suggestions-main-card" style={{ marginTop: "25px", border: "1px solid rgba(99, 102, 241, 0.25)" }}>
       <div className="panel-title ai-title-gradient">
@@ -78,7 +130,7 @@ function AISuggestionsCard({ code, pylint, security, complexity, token }) {
             Get personalized explanations and refactored code fixes directly from the AI model. 
             We will analyze your code, Pylint warnings, Bandit safety scan, and Radon complexity to provide clean, optimized suggestions.
           </p>
-          <button className="btn-ai-generate" onClick={generateSuggestions}>
+          <button className="btn-ai-generate" onClick={handleAction}>
             <FaRocket /> Generate AI Suggestions
           </button>
         </div>
@@ -100,7 +152,7 @@ function AISuggestionsCard({ code, pylint, security, complexity, token }) {
         <div className="ai-error-container">
           <FaExclamationTriangle className="ai-error-icon" />
           <div className="ai-error-message">{error}</div>
-          <button className="btn-ai-retry" onClick={generateSuggestions}>
+          <button className="btn-ai-retry" onClick={handleAction}>
             Retry Suggestions
           </button>
         </div>
@@ -210,7 +262,7 @@ function AISuggestionsCard({ code, pylint, security, complexity, token }) {
           
           {/* Quick Regenerate Action */}
           <div className="ai-footer-actions">
-            <button className="btn-ai-regenerate" onClick={generateSuggestions}>
+            <button className="btn-ai-regenerate" onClick={handleAction}>
               <FaMagic /> Regenerate Fixes
             </button>
           </div>
