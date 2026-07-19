@@ -1150,6 +1150,26 @@ function App() {
                       </button>
                     </form>
                   </div>
+
+                  <div className="card-panel" style={{ marginTop: "20px" }}>
+                    <h3 style={{ fontSize: "16px", marginBottom: "15px" }}>⚙️ Mistral AI Settings</h3>
+                    {keySaved && <div className="success-message">Mistral API Key saved successfully!</div>}
+                    <form onSubmit={saveMistralKey} className="settings-form">
+                      <div className="form-group">
+                        <label>Mistral API Key</label>
+                        <input
+                          type="password"
+                          value={mistralKey}
+                          onChange={(e) => setMistralKey(e.target.value)}
+                          placeholder="Enter your Mistral API Key (starts with mc_ or api_)"
+                          style={{ border: "1.5px solid var(--border-color)", width: "100%", padding: "12px", background: "var(--bg-primary)", color: "var(--text-primary)", borderRadius: "8px" }}
+                        />
+                      </div>
+                      <button type="submit" className="btn-save">
+                        Save API Key
+                      </button>
+                    </form>
+                  </div>
                 </>
               } 
             />
