@@ -115,3 +115,113 @@ def run_ai_review(code_text, file_name, api_key=None):
         
     except Exception as e:
         return {"enabled": True, "error": f"General Error: {str(e)}"}
+
+
+def run_ai_explain_and_fix(code_text, analysis_results, api_key=None):
+    """
+    Generate explanations and concrete fixes for code audit issues using Mistral AI.
+    """
+    if not api_key:
+        api_key = os.environ.get("MISTRAL_API_KEY")
+        
+    if not api_key:
+        return {
+            "error": "Mistral API key is not configured. Please configure it in your Settings or environment."
+        }
+
+    system_instruction = (
+        "You are an expert Principal Software Engineer and Security Architect. "
+        "Your task is to analyze the user's code alongside the static analysis results from Pylint, Bandit, and Radon. "
+        "Explain the issues in simple English, provide concrete and clean refactored code fixes, and suggest optimizations. "
+        "Your response must be a raw JSON object matching this schema exactly:\n"
+        "{\n"
+        "  \"summary\": \"Brief summary of the code and its overall quality...\",\n"
+        "  \"explanations\": [\n"
+        "    {\n"
+        "      \"issue\": \"Short issue name\",\n"
+        "      \"tool\": \"Pylint\" | \"Bandit\" | \"Radon\" | \"General\",\n"
+        "      \"line\": 12,\n"
+        "      \"explanation\": \"Detailed explanation in simple English of what the issue is and why it matters.\",\n"
+        "      \"fix_suggestion\": \"Concrete details of how to fix it.\",\n"
+        "      \"improved_code\": \"Complete drop-in code snippet or function showing the refactored fix\"\n"
+        "    }\n"
+        "  ],\n"
+        "  \"best_practices\": [\n"
+        "    \"Specific best practice or clean-code optimization tip 1...\",\n"
+        "    \"Specific best practice or clean-code optimization tip 2...\"\n"
+        "  ],\n"
+        "  \"security_recommendations\": [\n"
+        "    \"Security hardening tip 1...\",\n"
+        "    \"Security hardening tip 2...\"\n"
+        "  ],\n"
+        "  \"estimated_quality_after\": \"Est. Score: 95/100 (Excellent) - Refactoring has eliminated redundant loops, added missing docstrings, and improved safety...\"\n"
+        "}\n"
+        "Do not include any markdown formatting (like ```json or ```) outside the JSON. Return only raw, valid JSON."
+    )
+
+    pylint_clean = analysis_results.get("pylint")
+    security_clean = analysis_results.get("security")
+    complexity_clean = analysis_results.get("complexity")
+
+    prompt = (
+        f"CODE TO AUDIT:\n"
+        f"```\n{code_text}\n```\n\n"
+        f"STATIC ANALYSIS FINDINGS:\n"
+        f"- Pylint findings: {json.dumps(pylint_clean)}\n"
+        f"- Bandit security findings: {json.dumps(security_clean)}\n"
+        f"- Radon complexity findings: {json.dumps(complexity_clean)}\n"
+    )
+
+    url = "https://api.mistral.ai/v1/chat/completions"
+    model_name = os.environ.get("MISTRAL_MODEL", "open-mistral-7b")
+    
+    req_body = {
+        "model": model_name,
+        "messages": [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": prompt}
+        ],
+        "response_format": {
+            "type": "json_object"
+        }
+    }
+
+    try:
+        req_data = json.dumps(req_body).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=req_data,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            method="POST"
+        )
+        
+        with urllib.request.urlopen(req, timeout=45) as response:
+            res_data = response.read().decode("utf-8")
+            res_json = json.loads(res_data)
+            
+            choices = res_json.get("choices", [])
+            if not choices:
+                return {"error": "Mistral API returned no choices."}
+                
+            content = choices[0].get("message", {}).get("content", "").strip()
+            if not content:
+                return {"error": "Mistral API returned empty content."}
+                
+            parsed_suggestions = json.loads(content)
+            return parsed_suggestions
+            
+    except urllib.error.HTTPError as http_err:
+        try:
+            err_body = http_err.read().decode("utf-8")
+            err_json = json.loads(err_body)
+            msg = err_json.get("message", str(http_err))
+        except Exception:
+            msg = str(http_err)
+        return {"error": f"Mistral API Error: {msg}"}
+        
+    except Exception as e:
+        return {"error": f"General Error: {str(e)}"}
+

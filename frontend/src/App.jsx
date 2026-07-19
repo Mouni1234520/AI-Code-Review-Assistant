@@ -23,6 +23,7 @@ import AIDocViewer from "./components/AIDocViewer";
 import HistoryList from "./components/HistoryList";
 import TasksPage from "./components/TasksPage";
 import AnalyticsPage from "./components/AnalyticsPage";
+import AISuggestionsCard from "./components/AISuggestionsCard";
 
 function DashboardOverview({ username, history, recentActivity, tasksCount }) {
   const totalReviews = history.length;
@@ -228,6 +229,7 @@ function App() {
   const [reviewId, setReviewId] = useState(null);
   const [score, setScore] = useState(100);
   const [summary, setSummary] = useState("");
+  const [currentCodeContent, setCurrentCodeContent] = useState("");
   
   // Loader & Progress
   const [loading, setLoading] = useState(false);
@@ -394,6 +396,7 @@ function App() {
     setFile(null);
     setScore(100);
     setSummary("");
+    setCurrentCodeContent("");
   };
 
   const saveMistralKey = (e) => {
@@ -710,6 +713,7 @@ function App() {
     setAiResult(data.ai || null);
     setScore(data.score !== undefined ? data.score : 100);
     setSummary(data.summary || "");
+    setCurrentCodeContent(data.code || "");
 
     // Sync findings with tasks list
     syncTasksForFile(data.filename, data.pylint, data.security, data.complexity);
@@ -724,6 +728,7 @@ function App() {
     setAiResult(review.ai_analysis_result || null);
     setScore(review.review_score !== undefined ? review.review_score : 100);
     setSummary(review.summary || "");
+    setCurrentCodeContent(review.code_content || "");
   };
 
   // Show login page if not authenticated
@@ -891,6 +896,16 @@ function App() {
                           </div>
                         </div>
                       </div>
+
+                      {/* AI Explanation & suggestions card */}
+                      <AISuggestionsCard 
+                        key={reviewId} 
+                        code={currentCodeContent} 
+                        pylint={pylintResult} 
+                        security={securityResult} 
+                        complexity={complexityResult} 
+                        token={localStorage.getItem("access_token")} 
+                      />
 
                       {/* Relational Tabs */}
                       <div className="tab-container">

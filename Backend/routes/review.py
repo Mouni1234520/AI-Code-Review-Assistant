@@ -9,7 +9,7 @@ from models.review import Review, ReviewFinding
 from services.pylint_service import analyze_pylint
 from services.security_service import run_bandit
 from services.complexity_service import analyze_complexity, get_mi_rank
-from services.ai_service import run_ai_review
+from services.ai_service import run_ai_review, run_ai_explain_and_fix
 
 review_bp = Blueprint("review", __name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
@@ -269,7 +269,8 @@ def upload_or_submit():
             pylint_result=json.dumps(pylint_res),
             security_result=json.dumps(bandit_res),
             complexity_result=json.dumps(complexity_res),
-            ai_analysis_result=json.dumps(ai_res)
+            ai_analysis_result=json.dumps(ai_res),
+            code_content=code_content_combined
         )
         db.session.add(review)
         db.session.flush()
@@ -327,7 +328,8 @@ def upload_or_submit():
             "pylint": pylint_res,
             "security": bandit_res,
             "complexity": complexity_res,
-            "ai": ai_res
+            "ai": ai_res,
+            "code": code_content_combined
         }), 201
 
     except Exception as e:
@@ -363,4 +365,36 @@ def delete_review(review_id):
         return jsonify({"message": "Review deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@review_bp.route("/explain-and-fix", methods=["POST"])
+@jwt_required()
+def explain_and_fix():
+    try:
+        api_key_header = request.headers.get("X-Mistral-API-Key")
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Missing request body"}), 400
+
+        code = data.get("code")
+        pylint = data.get("pylint")
+        security = data.get("security")
+        complexity = data.get("complexity")
+
+        if not code:
+            return jsonify({"error": "No code content provided"}), 400
+
+        analysis_results = {
+            "pylint": pylint,
+            "security": security,
+            "complexity": complexity
+        }
+
+        res = run_ai_explain_and_fix(code, analysis_results, api_key_header)
+        if "error" in res:
+            return jsonify(res), 500
+
+        return jsonify(res), 200
+    except Exception as e:
         return jsonify({"error": str(e)}), 500

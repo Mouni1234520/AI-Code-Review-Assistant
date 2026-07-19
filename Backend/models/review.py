@@ -13,6 +13,7 @@ class Review(db.Model):
     security_result = db.Column(db.Text, nullable=True)      # JSON string of bandit output
     complexity_result = db.Column(db.Text, nullable=True)    # JSON string of radon complexity
     ai_analysis_result = db.Column(db.Text, nullable=True)   # JSON string of AI suggestions
+    code_content = db.Column(db.Text, nullable=True)         # Combined code content of files
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -42,6 +43,7 @@ class Review(db.Model):
             "security_result": self.get_security(),
             "complexity_result": self.get_complexity(),
             "ai_analysis_result": self.get_ai_analysis(),
+            "code_content": self.code_content,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "findings": [f.to_dict() for f in self.findings]
         }

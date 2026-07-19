@@ -46,6 +46,7 @@ class AiServiceTest(unittest.TestCase):
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer dummy_mistral_key")
         self.assertEqual(kwargs["headers"]["Content-Type"], "application/json")
 
+    @patch.dict("os.environ", {}, clear=True)
     def test_run_ai_review_no_api_key(self):
         # Execute without API key
         result = run_ai_review("print('hello')", "test.py", api_key=None)

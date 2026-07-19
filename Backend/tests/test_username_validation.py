@@ -22,6 +22,7 @@ class UsernameValidationTest(unittest.TestCase):
         # Username with only letters
         response = self.client.post("/register", json={
             "username": "Alice",
+            "email": "alice@example.com",
             "password": "securepassword123"
         })
         self.assertEqual(response.status_code, 201)
@@ -31,6 +32,7 @@ class UsernameValidationTest(unittest.TestCase):
         # Username containing numbers
         response = self.client.post("/register", json={
             "username": "Alice123",
+            "email": "alice@example.com",
             "password": "securepassword123"
         })
         self.assertEqual(response.status_code, 400)
@@ -40,6 +42,7 @@ class UsernameValidationTest(unittest.TestCase):
         # Username containing spaces
         response = self.client.post("/register", json={
             "username": "Alice Smith",
+            "email": "alice@example.com",
             "password": "securepassword123"
         })
         self.assertEqual(response.status_code, 400)
@@ -49,6 +52,7 @@ class UsernameValidationTest(unittest.TestCase):
         # Username containing special characters
         response = self.client.post("/register", json={
             "username": "Alice_Bob",
+            "email": "alice@example.com",
             "password": "securepassword123"
         })
         self.assertEqual(response.status_code, 400)
