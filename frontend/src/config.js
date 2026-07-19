@@ -1,1 +1,1 @@
-export const API_BASE_URL = `http://${window.location.hostname}:5000`;
+export const API_BASE_URL = "https://mounika.pythonanywhere.com";
