@@ -152,9 +152,27 @@ function AISuggestionsCard({
         <div className="ai-error-container">
           <FaExclamationTriangle className="ai-error-icon" />
           <div className="ai-error-message">{error}</div>
-          <button className="btn-ai-retry" onClick={handleAction}>
-            Retry Suggestions
-          </button>
+          <div className="ai-error-actions" style={{ display: "flex", gap: "10px", justifyContent: "center", marginTop: "14px", flexWrap: "wrap" }}>
+            <button className="btn-ai-retry" onClick={handleAction}>
+              Retry Suggestions
+            </button>
+            {(error.includes("401") || error.includes("Unauthorized") || error.includes("API Key") || error.includes("API key") || error.includes("key")) && (
+              <a 
+                href="#/settings" 
+                className="btn-save" 
+                style={{ 
+                  textDecoration: "none", 
+                  padding: "10px 18px", 
+                  fontSize: "13px", 
+                  display: "inline-flex", 
+                  alignItems: "center", 
+                  gap: "6px" 
+                }}
+              >
+                ⚙️ Update API Key in Settings
+              </a>
+            )}
+          </div>
         </div>
       )}
 
